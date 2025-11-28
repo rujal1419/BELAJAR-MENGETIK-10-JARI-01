@@ -27,14 +27,16 @@ export const CompactGraph: React.FC<CompactGraphProps> = ({ history }) => {
   }));
 
   return (
-    <div className="bg-gray-800 rounded-xl p-5 border border-gray-700 shadow-md flex-1 flex flex-col min-h-[200px]">
+    <div className="bg-gray-800 rounded-xl p-5 border border-gray-700 shadow-md flex-1 flex flex-col min-h-[200px] relative">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
           <TrendingUp className="w-3 h-3" /> Grafik Performa
         </h2>
-        {history.length > 0 && (
-           <span className="text-[10px] text-gray-500 bg-gray-900 px-2 py-0.5 rounded">Avg: {Math.round(history.reduce((a, b) => a + b.wpm, 0) / history.length)} WPM</span>
-        )}
+        <div className="flex items-center gap-2">
+            {history.length > 0 && (
+            <span className="text-[10px] text-gray-500 bg-gray-900 px-2 py-0.5 rounded">Avg: {Math.round(history.reduce((a, b) => a + b.wpm, 0) / history.length)} WPM</span>
+            )}
+        </div>
       </div>
       
       <div className="flex-1 w-full h-full min-h-[120px]">

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Zap, ArrowUp, ArrowDown, MessageSquareMore } from 'lucide-react';
+import { Zap, ArrowDown, MessageSquareMore } from 'lucide-react';
 import { UserState } from '../types';
 
 interface TopBarProps {
@@ -11,10 +11,9 @@ interface TopBarProps {
 export const TopBar: React.FC<TopBarProps> = ({ state, sessionStats, onOpenAI }) => {
   const lastHistoryItem = state.history.length > 0 ? state.history[state.history.length - 1] : null;
   
-  // Logic: Is current session better than the VERY LAST session recorded?
-  // If no history, assume neutral/good.
-  const isAccuracyBetter = lastHistoryItem ? sessionStats.accuracy >= lastHistoryItem.accuracy : true;
-  const showTrend = state.history.length > 0;
+  // Logic: Only show indicator if accuracy is DROPPING compared to last session.
+  // "pertahankan nilainya jika memang progresku lagi turun" -> Focus on the drop.
+  const isDropping = lastHistoryItem ? sessionStats.accuracy < lastHistoryItem.accuracy : false;
 
   return (
     <div className="bg-gray-900 border-b border-gray-800 p-4 flex items-center justify-between sticky top-0 z-40 h-16 shadow-md backdrop-blur-md bg-opacity-90">
@@ -37,16 +36,16 @@ export const TopBar: React.FC<TopBarProps> = ({ state, sessionStats, onOpenAI })
            <div className="text-center">
                <div className="text-[10px] text-gray-500 font-bold tracking-widest uppercase flex items-center justify-center gap-1 mb-0.5">
                    AKURASI
-                   {showTrend && (
+                   {isDropping && (
                        <span 
-                        className={`flex items-center ${isAccuracyBetter ? 'text-green-500' : 'text-red-500'}`} 
-                        title={isAccuracyBetter ? 'Akurasi meningkat/sama dibanding sesi lalu' : 'Akurasi menurun dibanding sesi lalu'}
+                        className="flex items-center text-red-500 ml-1 animate-pulse" 
+                        title={`Turun dari ${lastHistoryItem?.accuracy}% sesi lalu`}
                        >
-                           {isAccuracyBetter ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />}
+                           <ArrowDown className="w-3 h-3" />
                        </span>
                    )}
                </div>
-               <div className={`text-2xl md:text-3xl font-mono font-bold leading-none ${sessionStats.accuracy > 95 ? 'text-green-400 drop-shadow-[0_0_8px_rgba(74,222,128,0.3)]' : 'text-yellow-400'}`}>
+               <div className={`text-2xl md:text-3xl font-mono font-bold leading-none ${sessionStats.accuracy >= 95 ? 'text-green-400 drop-shadow-[0_0_8px_rgba(74,222,128,0.3)]' : 'text-yellow-400'}`}>
                    {sessionStats.accuracy}%
                </div>
            </div>

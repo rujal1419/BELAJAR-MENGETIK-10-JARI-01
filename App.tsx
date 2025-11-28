@@ -74,8 +74,14 @@ const App = () => {
   }, [isSessionActive, sessionStartTime, userInput]);
 
   const handleInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // CRASH FIX: Prevent input if session is in cooldown (showing score)
+    if (lastWpm !== null) return;
+
     const val = e.target.value;
     
+    // CRASH FIX: Prevent overflow input (typing more than the text length)
+    if (val.length > currentText.length) return;
+
     if (!isSessionActive && val.length === 1) { 
         setIsSessionActive(true); 
         setSessionStartTime(Date.now()); 
@@ -84,22 +90,26 @@ const App = () => {
     if (val.length > userInput.length) {
         const charTyped = val.slice(-1);
         const targetChar = currentText[val.length - 1];
-        const isError = charTyped !== targetChar;
-        
-        setUserState(prev => {
-            const key = targetChar.toLowerCase();
-            const currentStat = prev.letterStats[key] || { attempts: 0, errors: 0 };
-            return { 
-                ...prev, 
-                letterStats: { 
-                    ...prev.letterStats, 
-                    [key]: { 
-                        attempts: currentStat.attempts + 1, 
-                        errors: currentStat.errors + (isError ? 1 : 0) 
+
+        // CRASH FIX: Ensure targetChar exists before accessing properties
+        if (targetChar) {
+            const isError = charTyped !== targetChar;
+            
+            setUserState(prev => {
+                const key = targetChar.toLowerCase();
+                const currentStat = prev.letterStats[key] || { attempts: 0, errors: 0 };
+                return { 
+                    ...prev, 
+                    letterStats: { 
+                        ...prev.letterStats, 
+                        [key]: { 
+                            attempts: currentStat.attempts + 1, 
+                            errors: currentStat.errors + (isError ? 1 : 0) 
+                        } 
                     } 
-                } 
-            };
-        });
+                };
+            });
+        }
     }
     setUserInput(val);
     
@@ -242,16 +252,15 @@ const App = () => {
         {/* RIGHT COLUMN: Dashboard (Timer, Settings, Graph) */}
         <div className="lg:w-80 flex flex-col gap-6 shrink-0 w-full">
             
-            {/* Widget 1: Daily Progress & Target */}
+            {/* Widget 1: Daily Progress & Settings */}
             <div className="bg-gray-800 p-5 rounded-2xl border border-gray-700 relative shadow-lg">
-                 <div className="flex justify-between items-start mb-2">
+                 <div className="flex justify-between items-center mb-3">
                     <span className="text-[11px] text-gray-400 font-bold uppercase tracking-widest flex items-center gap-2">
-                        <Clock className="w-3.5 h-3.5" /> Progres Harian
+                        <Clock className="w-3.5 h-3.5" /> Progres
                     </span>
-                    
                     <div className="relative">
-                        <button onClick={() => setShowSettings(!showSettings)} className="text-gray-500 hover:text-white transition-colors p-1 hover:bg-gray-700 rounded-lg">
-                            <Settings className="w-4 h-4" />
+                        <button onClick={() => setShowSettings(!showSettings)} className="text-gray-500 hover:text-white transition-colors p-1.5 hover:bg-gray-700 rounded-lg" title="Pengaturan Waktu">
+                            <Settings className="w-3.5 h-3.5" />
                         </button>
                         
                         {/* Settings Popover */}
@@ -270,11 +279,11 @@ const App = () => {
                  
                  {/* Compact Time Display */}
                  <div className="flex items-center gap-2 mb-3">
-                     <div className="text-3xl font-mono font-bold text-white tracking-tighter">
-                        {Math.floor(userState.timeRemaining / 60)}<span className="text-gray-500 text-sm ml-0.5">m</span>
+                     <div className="text-xl font-mono font-bold text-white tracking-tighter">
+                        {Math.floor(userState.timeRemaining / 60)}<span className="text-gray-500 text-xs ml-0.5">m</span>
                      </div>
-                     <div className="text-3xl font-mono font-bold text-white tracking-tighter">
-                        {(userState.timeRemaining % 60).toString().padStart(2, '0')}<span className="text-gray-500 text-sm ml-0.5">d</span>
+                     <div className="text-xl font-mono font-bold text-white tracking-tighter">
+                        {(userState.timeRemaining % 60).toString().padStart(2, '0')}<span className="text-gray-500 text-xs ml-0.5">d</span>
                      </div>
                  </div>
                  
