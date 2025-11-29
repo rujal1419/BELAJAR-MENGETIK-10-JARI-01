@@ -1,9 +1,11 @@
 export type Proficiency = 'GREEN' | 'ORANGE' | 'RED';
 
 export enum Level {
-  PEMULA = 'PEMULA',
-  MENENGAH = 'MENENGAH',
-  MAHIR = 'MAHIR'
+  LEVEL_1 = 'LEVEL_1', // Home Row (ASDF)
+  LEVEL_2 = 'LEVEL_2', // Top Row (QWERTY)
+  LEVEL_3 = 'LEVEL_3', // Bottom Row (ZXCV)
+  LEVEL_4 = 'LEVEL_4', // Kata Mutiara Pendek
+  LEVEL_5 = 'LEVEL_5'  // Kutipan Inspiratif
 }
 
 export interface LetterStat {

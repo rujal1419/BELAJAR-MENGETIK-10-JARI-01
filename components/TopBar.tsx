@@ -1,18 +1,17 @@
 import React from 'react';
-import { Zap, ArrowDown, MessageSquareMore } from 'lucide-react';
+import { Zap, ArrowDown, MessageSquareMore, Star } from 'lucide-react';
 import { UserState } from '../types';
+import { LEVEL_CONFIG } from '../constants';
 
 interface TopBarProps {
   state: UserState;
   sessionStats: { wpm: number, accuracy: number };
   onOpenAI: () => void;
+  notification: string | null;
 }
 
-export const TopBar: React.FC<TopBarProps> = ({ state, sessionStats, onOpenAI }) => {
+export const TopBar: React.FC<TopBarProps> = ({ state, sessionStats, onOpenAI, notification }) => {
   const lastHistoryItem = state.history.length > 0 ? state.history[state.history.length - 1] : null;
-  
-  // Logic: Only show indicator if accuracy is DROPPING compared to last session.
-  // "pertahankan nilainya jika memang progresku lagi turun" -> Focus on the drop.
   const isDropping = lastHistoryItem ? sessionStats.accuracy < lastHistoryItem.accuracy : false;
 
   return (
@@ -23,7 +22,7 @@ export const TopBar: React.FC<TopBarProps> = ({ state, sessionStats, onOpenAI })
            <div className="bg-blue-600 p-1.5 rounded-lg group-hover:bg-blue-500 transition-colors">
              <Zap className="w-5 h-5 text-white" fill="currentColor" />
            </div>
-           <h1 className="text-lg font-bold text-white tracking-tight hidden sm:block">Guru Ketik <span className="text-blue-500 text-xs font-mono ml-1 px-1.5 py-0.5 bg-blue-500/10 rounded">v2.0</span></h1>
+           <h1 className="text-lg font-bold text-white tracking-tight hidden sm:block">Guru Ketik <span className="text-blue-500 text-xs font-mono ml-1 px-1.5 py-0.5 bg-blue-500/10 rounded">v2.1</span></h1>
         </div>
       </div>
 
@@ -53,23 +52,44 @@ export const TopBar: React.FC<TopBarProps> = ({ state, sessionStats, onOpenAI })
 
       {/* Right: Actions */}
       <div className="flex items-center gap-3">
-          <div className="hidden md:block px-3 py-1 rounded-full bg-gray-800 border border-gray-700 text-xs text-gray-300 font-medium font-mono">
-              {state.level}
+          <div className="hidden md:flex flex-col items-end mr-2">
+               <div className="px-3 py-1 rounded-full bg-gray-800 border border-gray-700 text-xs text-blue-300 font-bold font-mono">
+                  {LEVEL_CONFIG[state.level]?.label.split(':')[0] || state.level}
+               </div>
+               <div className="text-[10px] text-gray-500 mt-0.5">
+                  Target: {LEVEL_CONFIG[state.level]?.minWpm} WPM
+               </div>
           </div>
           
-          <button 
-            onClick={onOpenAI}
-            className="relative flex items-center justify-center bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white w-9 h-9 md:w-auto md:h-auto md:px-3 md:py-1.5 rounded-full text-xs font-bold transition-all shadow-lg shadow-indigo-500/20 active:scale-95 border border-white/10"
-            title="Analisis AI Gemini"
-          >
-              <MessageSquareMore className="w-4 h-4" />
-              <span className="hidden md:inline ml-2">Analisis</span>
-              {/* Notification dot to encourage usage */}
-              <span className="absolute -top-1 -right-1 flex h-3 w-3">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-indigo-500"></span>
-              </span>
-          </button>
+          <div className="relative">
+            {/* Notification Popover */}
+            {notification && (
+                <div className="absolute top-12 right-0 w-72 z-50 animate-fade-in origin-top-right">
+                    <div className="bg-indigo-600 text-white p-4 rounded-xl shadow-2xl relative border border-indigo-400">
+                        {/* Triangle arrow pointing up - aligned right to point to button */}
+                        <div className="absolute -top-2 right-5 w-4 h-4 bg-indigo-600 rotate-45 border-l border-t border-indigo-400"></div>
+                        
+                        <div className="flex items-start gap-3 relative z-10">
+                            <div className="bg-white/20 p-1.5 rounded-full shrink-0 mt-0.5">
+                                <Star className="w-4 h-4 text-yellow-300 fill-yellow-300 animate-spin-slow" />
+                            </div>
+                            <div className="text-sm font-medium leading-relaxed">
+                                {notification}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            <button 
+                onClick={onOpenAI}
+                className={`relative flex items-center justify-center bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white w-9 h-9 md:w-auto md:h-auto md:px-3 md:py-1.5 rounded-full text-xs font-bold transition-all shadow-lg shadow-indigo-500/20 active:scale-95 border border-white/10 ${notification ? 'ring-2 ring-indigo-400 ring-offset-2 ring-offset-gray-900 animate-bounce' : ''}`}
+                title="Analisis AI Gemini"
+            >
+                <MessageSquareMore className="w-4 h-4" />
+                <span className="hidden md:inline ml-2">Analisis</span>
+            </button>
+          </div>
       </div>
     </div>
   );

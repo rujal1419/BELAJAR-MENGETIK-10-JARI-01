@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 
 import { UserState, Level } from './types';
-import { INITIAL_STATE, LEVELS } from './constants';
+import { INITIAL_STATE, LEVELS, LEVEL_CONFIG } from './constants';
 import { TopBar } from './components/TopBar';
 import { VisualKeyboard } from './components/VisualKeyboard';
 import { CompactGraph } from './components/CompactGraph';
@@ -26,14 +26,22 @@ const App = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [showAI, setShowAI] = useState(false);
   const [showResetModal, setShowResetModal] = useState(false);
+  const [notification, setNotification] = useState<string | null>(null);
 
-  // Load from LocalStorage
+  // Load from LocalStorage & Migrate Old Levels
   useEffect(() => {
     const saved = localStorage.getItem('geminiTypingTutor_v2');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        setUserState({ ...INITIAL_STATE, ...parsed });
+        
+        // Migration logic for old enums
+        let migratedLevel = parsed.level;
+        if (parsed.level === 'PEMULA') migratedLevel = Level.LEVEL_1;
+        if (parsed.level === 'MENENGAH') migratedLevel = Level.LEVEL_4;
+        if (parsed.level === 'MAHIR') migratedLevel = Level.LEVEL_5;
+
+        setUserState({ ...INITIAL_STATE, ...parsed, level: migratedLevel });
       } catch (e) {
         console.error("Failed to load save", e);
       }
@@ -46,7 +54,7 @@ const App = () => {
   }, [userState]);
 
   const generateText = () => {
-    const texts = LEVELS[userState.level];
+    const texts = LEVELS[userState.level] || LEVELS[Level.LEVEL_1];
     const randomIndex = Math.floor(Math.random() * texts.length);
     setCurrentText(texts[randomIndex]);
     setUserInput("");
@@ -74,12 +82,8 @@ const App = () => {
   }, [isSessionActive, sessionStartTime, userInput]);
 
   const handleInput = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // CRASH FIX: Prevent input if session is in cooldown (showing score)
     if (lastWpm !== null) return;
-
     const val = e.target.value;
-    
-    // CRASH FIX: Prevent overflow input (typing more than the text length)
     if (val.length > currentText.length) return;
 
     if (!isSessionActive && val.length === 1) { 
@@ -91,10 +95,8 @@ const App = () => {
         const charTyped = val.slice(-1);
         const targetChar = currentText[val.length - 1];
 
-        // CRASH FIX: Ensure targetChar exists before accessing properties
         if (targetChar) {
             const isError = charTyped !== targetChar;
-            
             setUserState(prev => {
                 const key = targetChar.toLowerCase();
                 const currentStat = prev.letterStats[key] || { attempts: 0, errors: 0 };
@@ -123,6 +125,26 @@ const App = () => {
     }
   };
 
+  const checkAutoLevelUp = (wpm: number, accuracy: number) => {
+      const config = LEVEL_CONFIG[userState.level];
+      if (!config) return;
+
+      if (accuracy >= 95 && wpm >= config.minWpm) {
+          // Find next level
+          const levels = Object.values(Level);
+          const currentIndex = levels.indexOf(userState.level);
+          
+          if (currentIndex < levels.length - 1) {
+              const nextLevel = levels[currentIndex + 1];
+              setUserState(prev => ({ ...prev, level: nextLevel }));
+              setNotification(`Luar biasa! Akurasi & WPM tercapai. Naik ke ${LEVEL_CONFIG[nextLevel].label}!`);
+              
+              // Clear notification after 5s
+              setTimeout(() => setNotification(null), 8000);
+          }
+      }
+  };
+
   const finishSession = (finalInput: string, errors: number) => {
     setIsSessionActive(false);
     const endTime = Date.now();
@@ -144,6 +166,8 @@ const App = () => {
         totalSessions: prev.totalSessions + 1,
         timeRemaining: Math.max(0, prev.timeRemaining - Math.round(durationSeconds))
     }));
+
+    checkAutoLevelUp(finalWpm, finalAccuracy);
     
     setTimeout(() => { 
         generateText(); 
@@ -180,14 +204,19 @@ const App = () => {
 
   return (
     <div className="min-h-screen bg-gray-950 text-gray-200 font-sans flex flex-col">
-      <TopBar state={userState} sessionStats={sessionStats} onOpenAI={() => setShowAI(true)} />
+      <TopBar 
+        state={userState} 
+        sessionStats={sessionStats} 
+        onOpenAI={() => setShowAI(true)}
+        notification={notification}
+      />
       
       <AIAnalysisModal isOpen={showAI} onClose={() => setShowAI(false)} state={userState} />
       <ResetConfirmationModal isOpen={showResetModal} onClose={() => setShowResetModal(false)} onConfirm={performReset} />
 
       <main className="flex-1 max-w-7xl mx-auto p-4 md:p-8 flex flex-col lg:flex-row gap-8 w-full justify-center">
         
-        {/* LEFT COLUMN: Learning Area (Restricted width to match keyboard visually) */}
+        {/* LEFT COLUMN: Learning Area */}
         <div className="flex-1 flex flex-col gap-6 max-w-3xl w-full">
             {/* Typing Display */}
             <div className="bg-gray-800 rounded-2xl p-8 border border-gray-700 shadow-xl relative overflow-hidden min-h-[200px] flex items-center justify-center w-full group transition-colors hover:border-gray-600">
@@ -298,7 +327,7 @@ const App = () => {
             {/* Widget 2: Level & Reset */}
             <div className="bg-gray-800 p-5 rounded-2xl border border-gray-700 shadow-lg">
                  <div className="text-[11px] text-gray-400 font-bold uppercase tracking-widest mb-3 flex items-center gap-2">
-                    <Award className="w-3.5 h-3.5" /> Tingkatan
+                    <Award className="w-3.5 h-3.5" /> Kurikulum
                  </div>
                  <div className="flex flex-col gap-3">
                      <div className="relative">
@@ -307,13 +336,18 @@ const App = () => {
                             onChange={(e) => changeLevel(e.target.value as Level)}
                             className="w-full bg-gray-900 border border-gray-600 text-xs text-white rounded-lg p-2.5 pr-8 focus:ring-1 focus:ring-blue-500 outline-none appearance-none cursor-pointer font-medium"
                         >
-                            <option value={Level.PEMULA}>PEMULA (Dasar Jari)</option>
-                            <option value={Level.MENENGAH}>MENENGAH (Kalimat)</option>
-                            <option value={Level.MAHIR}>MAHIR (Kompleks)</option>
+                            {Object.entries(LEVEL_CONFIG).map(([key, config]) => (
+                                <option key={key} value={key}>{config.label}</option>
+                            ))}
                         </select>
                         <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
                             <ArrowDown className="w-4 h-4" />
                         </div>
+                     </div>
+                     
+                     {/* Level Requirement Info */}
+                     <div className="text-[10px] text-gray-500 text-center bg-gray-900/50 py-1.5 rounded border border-gray-700/50">
+                        Syarat Naik: Akurasi 95% + {LEVEL_CONFIG[userState.level]?.minWpm} WPM
                      </div>
 
                      <button 
